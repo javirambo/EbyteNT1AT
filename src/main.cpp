@@ -1,3 +1,17 @@
+/*
+ * Este archivo es parte del proyecto EbyteNT1AT.
+ *
+ * Este trabajo ha sido dedicado al dominio público bajo la licencia CC0 1.0 Universal.
+ * Para ver una copia de esta licencia, visite:
+ * https://creativecommons.org/publicdomain/zero/1.0/
+ *
+ * Renunciamos a todos los derechos de autor y derechos conexos en la mayor medida
+ * permitida por la ley aplicable.
+ *
+ * Autor: Javier Rambaldo
+ * Fecha: 21 de junio de 2024
+ */
+
 #include <Arduino.h>
 #include "EbyteNT1AT.h"
 
