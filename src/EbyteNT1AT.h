@@ -20,6 +20,7 @@ class EbyteNT1AT
    private:
     Stream* serial;
 
+   public:
     // Lee por ejemplo el OK:
     //  "\r\n+OK\r\n" o "\r\n+OK=AT enable\r\n"
     String ReadAT()
@@ -38,7 +39,6 @@ class EbyteNT1AT
             ;
     }
 
-   public:
     void Begin(Stream& serial) { this->serial = &serial; }
 
     // 1.2 Enter AT Commands
@@ -104,22 +104,57 @@ class EbyteNT1AT
     String QueryMAC() { return SendAT("AT+MAC"); }  // 54-14-A7-86-DF-21
 
     // 1.12 Query / Set the network parameters
-    String QueryNetwork() { return SendAT("AT+WAN"); }                                       // STATIC,192.168.3.7,255.255.255.0,192.168.3.1,114.114.114.114
-    String SetNetwork(String mode, String address, String mask, String gateway, String dns)  //
+    //    Mode:    DHCP/STATIC
+    //    Address: Native IP address
+    //    Mask:    Subnet mask
+    //    Gateway: The gateway
+    //    DNS:     The DNS Server
+    String QueryNetwork() { return SendAT("AT+WAN"); }  // STATIC,192.168.3.7,255.255.255.0,192.168.3.1,114.114.114.114
+    static const uint8_t STATICNetwork = 0;
+    static const uint8_t DHCPNetwork   = 1;
+    String SetNetwork(uint8_t mode, String ip, String mask, String gateway, String dns)  //
     {
-        return SendAT("AT+WAN=" + mode + "," + address + "," + mask + "," + gateway + "," + dns);
+        if (mode == STATICNetwork)
+            return SendAT("AT+WAN=STATIC," + ip + "," + mask + "," + gateway + "," + dns);
+        else
+            return SendAT("AT+WAN=DHCP," + ip + "," + mask + "," + gateway + "," + dns);
     }
 
     // 1.13 Query / set the local port number
-    String QueryLocalPort() { return SendAT("AT+LPORT"); }                   // 8883
-    String SetLocalPort(String port) { return SendAT("AT+LPORT=" + port); }  //
+    String QueryLocalPort() { return SendAT("AT+LPORT"); }                        // 8883
+    String SetLocalPort(int port) { return SendAT("AT+LPORT=" + String(port)); }  //
 
     // 1.14 Query / Set the local working mode and the target equipment
-    //    Model (working mode): TCPC, TCPS, UDPC, UDPS, MQTTC, HTTPC
+    //    Mode (working mode): TCPC, TCPS, UDPC, UDPS, MQTTC, HTTPC
     //    Remote IP (target IP / domain name): a maximum of 128-character domain name
     //    Remote Port (target port): 1-65535
-    String QueryNetProtocol() { return SendAT("AT+SOCK"); }  // TCPC,192.168.3.3,8888
-    String SetNetProtocol(String mode, String remoteIP, String remotePort) { return SendAT("AT+SOCK=" + mode + "," + remoteIP + "," + remotePort); }
+    String QueryWorkingMode() { return SendAT("AT+SOCK"); }  // TCPC,192.168.3.3,8888
+    static const uint8_t WorkModeTcpClient  = 0;
+    static const uint8_t WorkModeTcpServer  = 1;
+    static const uint8_t WorkModeUdpClient  = 2;
+    static const uint8_t WorkModeUdpServer  = 3;
+    static const uint8_t WorkModeMqttClient = 4;
+    static const uint8_t WorkModeHttpClient = 5;
+    String SetWorkingMode(uint8_t mode, String remoteIP, int remotePort)
+    {
+        switch (mode)
+        {
+            case WorkModeTcpClient:
+                return SendAT("AT+SOCK=TCPC," + remoteIP + "," + String(remotePort));
+            case WorkModeTcpServer:
+                return SendAT("AT+SOCK=TCPS," + remoteIP + "," + String(remotePort));
+            case WorkModeUdpClient:
+                return SendAT("AT+SOCK=UDPC," + remoteIP + "," + String(remotePort));
+            case WorkModeUdpServer:
+                return SendAT("AT+SOCK=UDPS," + remoteIP + "," + String(remotePort));
+            case WorkModeMqttClient:
+                return SendAT("AT+SOCK=MQTTC," + remoteIP + "," + String(remotePort));
+            case WorkModeHttpClient:
+                return SendAT("AT+SOCK=HTTPC," + remoteIP + "," + String(remotePort));
+            default:
+                return "Error: unknown mode";
+        }
+    }
 
     // 1.15 Query the network link status
     String QueryLinkStatus() { return SendAT("AT+LINKSTA"); }  //
@@ -226,28 +261,28 @@ class EbyteNT1AT
     String QueryModbusMode() { return SendAT("AT+MODWKMOD"); }
 
     static const uint8_t ModbusDisabled                     = 0;
-    static const uint8_t ModbusModeSimpleProtocolConvertion = 1;
+    static const uint8_t ModbusModeSimpleProtocolConversion = 1;
     static const uint8_t ModbusModeMultihostMode            = 2;
     static const uint8_t ModbusModeStorageType              = 3;
     static const uint8_t ModbusModeConfigurableGateway      = 4;
     static const uint8_t ModbusModeActiveUploadMode         = 5;
-    String SetModbusMode(uint8_t mode, String timeout)
+    String SetModbusMode(uint8_t mode, int timeout)
     {
         String sMode;
         switch (mode)
         {
             case ModbusDisabled:
-                return SendAT("AT+MODWKMOD=NONE," + timeout);
-            case ModbusModeSimpleProtocolConvertion:
-                return SendAT("AT+MODWKMOD=SIMPL," + timeout);
+                return SendAT("AT+MODWKMOD=NONE," + String(timeout));
+            case ModbusModeSimpleProtocolConversion:
+                return SendAT("AT+MODWKMOD=SIMPL," + String(timeout));
             case ModbusModeMultihostMode:
-                return SendAT("AT+MODWKMOD=MULIT," + timeout);
+                return SendAT("AT+MODWKMOD=MULIT," + String(timeout));
             case ModbusModeStorageType:
-                return SendAT("AT+MODWKMOD=STORE," + timeout);
+                return SendAT("AT+MODWKMOD=STORE," + String(timeout));
             case ModbusModeConfigurableGateway:
-                return SendAT("AT+MODWKMOD=CONFIG," + timeout);
+                return SendAT("AT+MODWKMOD=CONFIG," + String(timeout));
             case ModbusModeActiveUploadMode:
-                return SendAT("AT+MODWKMOD=AUTOUP," + timeout);
+                return SendAT("AT+MODWKMOD=AUTOUP," + String(timeout));
             default:
                 return "Error: unknown mode";
         }
