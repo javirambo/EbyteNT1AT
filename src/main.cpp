@@ -14,51 +14,38 @@
 
 #include <Arduino.h>
 #include "EbyteNT1AT.h"
-#include "modbus/ModbusMaster.h"
+#include "ModbusRTU.h"
 
-#define TX_PIN 1
-#define RX_PIN 2
+#define TX_PIN 42
+#define RX_PIN 41
 
-EbyteNT1AT Nt1;
-ModbusMaster node;
+ModbusRTU ModbusConn(UART_NUM_1);
+EbyteNT1AT Nt1(UART_NUM_1);
 
 void setup()
 {
-    pinMode(0, INPUT_PULLUP);
-
     Serial.begin(115200);
-    Serial2.begin(115200, SERIAL_8N1, RX_PIN, TX_PIN);
-    Nt1.Begin(Serial2);
-
-    node.begin(1, Serial2);
-
+    pinMode(0, INPUT_PULLUP);
     delay(1000);
-    Serial.println("Listo");
 
-    // if (Nt1.GoIntoAT())
-    // {
-    //     Nt1.FactoryDataReset();
-    //     Nt1.Restart();
-    // }
+    ModbusConn.Setup(115200, 8, 'N', 1, RX_PIN, TX_PIN, -1, 0, 1000, 0);
+
+    Serial.println("Listo");
 }
 
 void loop()
 {
     if (digitalRead(0) != LOW)
     {
-        int errCode = node.readHoldingRegisters(0, 4);
-
-        if (errCode == ModbusMaster::ku8MBSuccess)
+        uint32_t result = ModbusConn.ReadHoldingRegister(0, 1, 2);
+        if (ModbusConn.status == 0)
         {
-            for (size_t i = 0; i < 4; i++)
-            {
-                int result = node.getResponseBuffer(i);
-                Serial.printf("%02X %02X / ", i, result);
-            }
-            Serial.println();
+            Serial.printf("%04X\n", result);
         }
         else
-            Serial.println(errCode, 16);
+        {
+            Serial.printf("Error status=%X\n", ModbusConn.status);
+        }
         delay(1000);
     }
 
@@ -79,13 +66,12 @@ void loop()
             Serial.println(Nt1.QueryModbusMode());                                            //+OK=SIMPL,1000
             Serial.println(Nt1.SetModbusMode(Nt1.ModbusModeSimpleProtocolConversion, 1000));  //+OK=Modbus TCP to RTU is ON
 
-            Nt1.Restart();  // tengo que resetear sino no anda...
+            //Nt1.Restart();  // tengo que resetear sino no anda...
 
             // salgo del modo AT...
             Serial.println(Serial.println(Nt1.ExitAT()));  //+OK
-            Serial.print("sali del modo AT, ahora mando algo al PLC..\n");
+            Serial.println("sali del modo AT, ahora mando algo al PLC..");
 
-            // Nt1.Flush();
             delay(500);
         }
         else

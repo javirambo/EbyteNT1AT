@@ -14,42 +14,41 @@
 
 #pragma once
 #include <Arduino.h>
+#include "driver/uart.h"
 
 class EbyteNT1AT
 {
    private:
-    Stream* serial;
+    int uartNum;
 
    public:
+    EbyteNT1AT(int UartNum) : uartNum(UartNum) {}
+
     // Lee por ejemplo el OK:
-    //  "\r\n+OK\r\n" o "\r\n+OK=AT enable\r\n"
     String ReadAT()
     {
-        String s = serial->readStringUntil('\n');
-        if (s.length() <= 2) s = serial->readStringUntil('\n');
-        s.replace("\r", "");
-        return s;
+        uint8_t c;
+        String str;
+        unsigned long start = millis();
+        do
+        {
+            int len = uart_read_bytes(uartNum, &c, 1, 20 / portTICK_PERIOD_MS);
+            if (len == 1)
+            {
+                if ((c == '\r' || c == '\n') && str.length() > 2) break;
+                if (c != '\r' && c != '\n') str += (char)c;
+            }
+        } while (millis() - start < 1000);
+        return str;
     }
-
-    // vacia el buffer de Rx y Tx
-    void Flush()
-    {
-        serial->flush();
-        while (serial->read() != -1)  //
-            ;
-    }
-
-    void Begin(Stream& serial) { this->serial = &serial; }
 
     // 1.2 Enter AT Commands
     bool GoIntoAT()
     {
-        Flush();
-
-        serial->print("+++");
+        uart_flush_input(uartNum);
+        uart_write_bytes(uartNum, "+++", 3);
         delay(100);
-        serial->print("AT");
-        // delay(100);
+        uart_write_bytes(uartNum, "AT", 2);
 
         // espero el OK => o \r\n+OK\r\n o \r\n+OK=AT enable\r\n
         String s = ReadAT();
@@ -57,12 +56,10 @@ class EbyteNT1AT
     }
 
     // envia el comando AT y retorna el resultado
-    String SendAT(String cmd)
+    String SendAT(String c)
     {
-        Flush();
-
-        serial->println(cmd);
-        // delay(10);
+        uart_flush_input(uartNum);
+        uart_write_bytes(uartNum, c.c_str(), c.length());
         return ReadAT();
     }
 
